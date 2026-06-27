@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DocuTrack — Professor</title>
+  <script>(function(){try{if(localStorage.getItem('theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>DocuTrack <span class="muted" style="font-weight:400; margin-left:6px;">/ Professor</span></h1>
+    <div class="space"></div>
+    <span class="who" id="profName"></span>
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to light theme">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+      </svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+    </button>
+    <button id="logoutBtn" class="btn ghost">Sign out</button>
+  </header>
+
+  <main class="container">
+
+    <section class="section">
+      <header class="section-head">
+        <div class="section-head-text">
+          <h2 class="section-title">Manage assignments</h2>
+          <p class="section-meta">Upload templates, then issue them to selected students.</p>
+        </div>
+      </header>
+
+      <div class="grid grid-2">
+        <section class="card">
+          <h2>Upload assignment</h2>
+          <p class="sub">Upload a PDF template to create a new assignment.</p>
+
+          <div class="field">
+            <label for="title">Title (optional)</label>
+            <input type="text" id="title" placeholder="e.g. Problem Set 1"/>
+          </div>
+          <div class="field">
+            <label>Template PDF</label>
+            <div class="input-file">
+              Choose PDF
+              <input type="file" id="templateFile" accept="application/pdf"/>
+            </div>
+          </div>
+          <div class="row">
+            <button id="uploadBtn" class="btn">Upload</button>
+          </div>
+          <div id="uploadStatus" class="submit-status hidden"></div>
+        </section>
+
+        <section class="card">
+          <h2>Assignments</h2>
+          <p class="sub">Click a row to select it for issuance.</p>
+
+          <div class="table-wrap">
+            <table class="table" id="assignTable">
+              <thead><tr><th>ID</th><th>Title</th><th>Hash</th><th>Created</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="row">
+            <input type="number" id="assignmentId" placeholder="Selected ID"/>
+            <button id="refreshAssign" class="btn ghost">Refresh</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>Issue to students</h2>
+        <p class="sub">Select students and issue the selected assignment.</p>
+
+        <div class="field">
+          <label for="students">Students <span class="faint">(hold Ctrl / Cmd to multi-select)</span></label>
+          <select id="students" multiple size="7"></select>
+        </div>
+        <div class="row">
+          <button id="issueBtn" class="btn">Issue</button>
+        </div>
+        <div id="issueStatus" class="submit-status hidden"></div>
+      </section>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <div class="section-head-text">
+          <h2 class="section-title">Activity</h2>
+          <p class="section-meta">Track issuances and submissions in real time.</p>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Issued files</h2>
+        <div class="row">
+          <a id="csvIssuances" class="btn ghost" href="#" target="_blank">Export CSV</a>
+          <button id="refreshIssued" class="btn ghost">Refresh</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" id="issuedTable">
+            <thead>
+              <tr><th>Issuance</th><th>Assignment</th><th>Student</th><th>Issued at</th><th>Status</th><th>Submission</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Submissions</h2>
+        <div class="row">
+          <a id="csvSubs" class="btn ghost" href="#" target="_blank">Export CSV</a>
+          <button id="refreshSubs" class="btn ghost">Refresh</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" id="subsTable">
+            <thead>
+              <tr><th>Issuance</th><th>Assignment</th><th>Student</th><th>Submitted at</th><th>Status</th><th>File</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="section muted">
+      <header class="section-head">
+        <div class="section-head-text">
+          <h2 class="section-title">Tools</h2>
+          <p class="section-meta">Crypto demonstrations and system reset.</p>
+        </div>
+        <button class="btn secondary" id="openCryptoLab">Open crypto lab</button>
+      </header>
+
+      <section id="cryptoLab" class="card hidden">
+      <h2>Crypto lab</h2>
+      <p class="sub">AES-256-GCM &amp; RSA-PSS — explore signing, encryption, tampering, and decryption.</p>
+
+      <h3>Sign a header (RSA-PSS-SHA256)</h3>
+      <div class="grid grid-2">
+        <div>
+          <div class="field">
+            <label>Header JSON (editable)</label>
+            <textarea id="lab_hdr" rows="10" class="lab-input">
+{
+  "assignmentID": "CSXXX-01",
+  "studentID": "2025-001",
+  "issueTimestamp": "2025-11-02T00:00:00Z",
+  "templateHash": "deadbeefcafebabefeedface1234567890abcdef",
+  "algorithm": "AES-256-GCM + RSA-PSS-SHA256"
+}
+            </textarea>
+          </div>
+          <div class="row">
+            <button class="btn" id="lab_btnSign">Sign header</button>
+            <button class="btn ghost" id="lab_btnVerify">Verify signature</button>
+          </div>
+          <p id="lab_signMsg" class="muted mt-6"></p>
+        </div>
+        <div>
+          <details open>
+            <summary>Canonical AAD (immutable fields)</summary>
+            <pre id="lab_aad" class="lab-pre pre-clip">(will appear here)</pre>
+          </details>
+          <details>
+            <summary>Signature (hex)</summary>
+            <pre id="lab_sig" class="lab-pre pre-clip">(will appear here)</pre>
+          </details>
+          <div class="mt-12 row">
+            <span class="muted" style="font-size:13px;">Verified</span>
+            <span id="lab_verified" class="badge">n/a</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="lab-hr"/>
+
+      <h3>Encrypt file (AES-256-GCM with AAD)</h3>
+      <div class="grid grid-2">
+        <div>
+          <div class="field">
+            <label>File to encrypt</label>
+            <div class="input-file">
+              Choose file
+              <input id="lab_file" type="file"/>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn" id="lab_btnEncrypt">Encrypt</button>
+          </div>
+          <div class="row mt-12" style="font-size:13px;">
+            <span class="muted">Key</span> <span id="lab_keyLen" class="badge">0 bytes</span>
+            <span class="muted">IV</span>  <span id="lab_ivLen"  class="badge">0 bytes</span>
+            <span class="muted">CT</span>  <span id="lab_ctLen"  class="badge">0 bytes</span>
+            <span class="muted">Tag</span> <span id="lab_tagLen" class="badge">0 bytes</span>
+          </div>
+        </div>
+        <div>
+          <details open>
+            <summary>Key (base64)</summary>
+            <pre id="lab_key" class="lab-pre pre-clip"></pre>
+          </details>
+          <details>
+            <summary>IV (base64)</summary>
+            <pre id="lab_iv" class="lab-pre pre-clip"></pre>
+          </details>
+          <details>
+            <summary>AAD (canonical header)</summary>
+            <pre id="lab_aad2" class="lab-pre pre-clip"></pre>
+          </details>
+        </div>
+      </div>
+
+      <div class="grid grid-2 mt-12">
+        <details>
+          <summary>Ciphertext (base64)</summary>
+          <pre id="lab_ct" class="lab-pre pre-clip"></pre>
+        </details>
+        <details>
+          <summary>Auth tag (base64)</summary>
+          <pre id="lab_tag" class="lab-pre pre-clip"></pre>
+        </details>
+      </div>
+
+      <div class="row mt-12">
+        <button class="btn ghost" id="lab_btnDownloadZip">Download ZIP</button>
+        <span id="lab_zipInfo" class="muted" style="font-size:13px;"></span>
+      </div>
+
+      <hr class="lab-hr"/>
+
+      <h3>Tamper &amp; decrypt</h3>
+      <p class="sub">Change one byte in the ciphertext or modify the AAD to demonstrate tag failure.</p>
+      <div class="grid grid-2">
+        <div>
+          <div class="field">
+            <label>Ciphertext to decrypt (base64)</label>
+            <textarea id="lab_ctIn" rows="6" class="lab-input"></textarea>
+          </div>
+          <div class="field">
+            <label>Tag (base64)</label>
+            <input id="lab_tagIn" class="lab-input"/>
+          </div>
+          <div class="field">
+            <label>AAD (exact canonical header)</label>
+            <textarea id="lab_aadIn" rows="4" class="lab-input"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn warn" id="lab_btnTamper">Tamper 1 byte</button>
+            <button class="btn" id="lab_btnDecrypt">Decrypt</button>
+          </div>
+          <p id="lab_decMsg" class="mt-6"></p>
+        </div>
+        <div>
+          <div class="field">
+            <label>Key (base64)</label>
+            <input id="lab_keyIn" class="lab-input"/>
+          </div>
+          <div class="field">
+            <label>IV (base64)</label>
+            <input id="lab_ivIn" class="lab-input"/>
+          </div>
+          <div class="field">
+            <label>Plaintext</label>
+            <pre id="lab_pt" class="lab-pre"></pre>
+          </div>
+          <div class="row">
+            <button class="btn ghost" id="lab_btnPreview">Preview PDF</button>
+          </div>
+          <iframe id="lab_preview" class="viewer mt-12" style="height: 60vh;"></iframe>
+        </div>
+      </div>
+    </section>
+
+      <section class="card" id="resetCard">
+        <h2>Reset system</h2>
+        <p class="sub">Type <code>RESET</code> to confirm. Choose what to clear.</p>
+
+        <div class="row">
+          <select id="resetScope" style="flex:1; min-width: 260px;">
+            <option value="issuances" selected>Issuances &amp; submissions only</option>
+            <option value="all">Everything (also deletes assignments / templates)</option>
+          </select>
+          <input id="resetConfirm" placeholder="Type RESET to confirm" style="flex:1; min-width: 200px;"/>
+          <button id="resetBtn" class="btn danger">Reset</button>
+        </div>
+        <div id="resetStatus" class="submit-status hidden"></div>
+      </section>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast hide">
+    <div class="title">Notice</div>
+    <div class="msg" id="toastMsg"></div>
+  </div>
+
+  <script src="/static/script.js"></script>
+  <script>
+    ensureAuth('professor');
+    document.getElementById('profName').textContent = localStorage.getItem('name') || '';
+    document.getElementById('logoutBtn').onclick = logout;
+
+    function toast(msg){
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.remove('hide');
+      setTimeout(()=>t.classList.add('hide'), 2400);
+    }
+
+    /* ===== Upload ===== */
+    document.getElementById('uploadBtn').onclick = async ()=>{
+      const fd = new FormData();
+      fd.append('title', document.getElementById('title').value || '');
+      const file = document.getElementById('templateFile').files[0];
+      if(!file){ toast('Pick a PDF first.'); return; }
+      fd.append('file', file);
+
+      const url = new URL('/prof/assignments/upload', window.location.origin);
+      const res = await fetch(url, { method:'POST', headers: authHeaders(), body: fd });
+      const data = await res.json();
+      const box = document.getElementById('uploadStatus');
+      box.className = 'submit-status';
+
+      if (res.ok) {
+        box.classList.add('submit-ok');
+        box.innerHTML = `Assignment uploaded — <strong>${escapeHtml(data.title)}</strong> (#${escapeHtml(data.assignment_id)})`;
+      } else {
+        box.classList.add('submit-bad');
+        box.textContent = 'Upload failed.';
+      }
+      box.classList.remove('hidden');
+      if(res.ok){ toast('Assignment uploaded.'); loadAssignments(); }
+    };
+
+    /* ===== Load Assignments ===== */
+    async function loadAssignments(){
+      const rows = await api('/prof/assignments');
+      const tb = document.querySelector('#assignTable tbody');
+      tb.innerHTML = '';
+      if (!rows.length) {
+        tb.innerHTML = `<tr><td colspan="4" class="table-empty">No assignments yet.</td></tr>`;
+        return;
+      }
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.title)}</td><td class="mono muted">${escapeHtml(r.template_hash.slice(0,16))}…</td><td>${escapeHtml(prettyTime(r.created_at))}</td>`;
+        tr.style.cursor = 'pointer';
+        tr.onclick = ()=>{ document.getElementById('assignmentId').value = r.id; toast('Selected assignment #' + r.id); };
+        tb.appendChild(tr);
+      });
+    }
+    document.getElementById('refreshAssign').onclick = loadAssignments;
+    loadAssignments();
+
+    /* ===== Students list ===== */
+    async function loadStudents(){
+      const s = document.getElementById('students');
+      const rows = await api('/users/students');
+      s.innerHTML = '';
+      rows.forEach(u=>{
+        const opt = document.createElement('option');
+        opt.value = u.id; opt.textContent = `${u.name} — ${u.email}`;
+        s.appendChild(opt);
+      });
+    }
+    loadStudents();
+
+    /* ===== Issue ===== */
+    document.getElementById('issueBtn').onclick = async ()=>{
+      const aid = Number(document.getElementById('assignmentId').value);
+      const ids = [...document.getElementById('students').options].filter(o=>o.selected).map(o=>Number(o.value));
+      if(!aid || !ids.length){ toast('Pick assignment and at least one student.'); return; }
+      const res = await api('/prof/assignments/issue', 'POST', { assignment_id: aid, student_ids: ids });
+      const box = document.getElementById('issueStatus');
+      box.className = 'submit-status submit-ok';
+      box.innerHTML = `Issued assignment #${aid} to ${ids.length} student${ids.length === 1 ? '' : 's'}.`;
+      box.classList.remove('hidden');
+      toast(`Issued to ${ids.length} student(s).`);
+      loadIssued();
+    };
+
+    /* ===== Badge helper ===== */
+    function badge(status){
+      const s = (status||'').toLowerCase();
+      const cls = {issued:'issued',downloaded:'downloaded',decrypted:'decrypted',submitted:'submitted',tampered:'tampered'}[s] || 'issued';
+      return `<span class="badge ${cls}">${status}</span>`;
+    }
+
+    /* ===== Issuances ===== */
+    async function loadIssued(){
+      const rows = await api('/prof/issuances');
+      const tb = document.querySelector('#issuedTable tbody');
+      tb.innerHTML = '';
+      if (!rows.length) {
+        tb.innerHTML = `<tr><td colspan="6" class="table-empty">No issuances yet.</td></tr>`;
+      } else {
+        rows.forEach(r=>{
+          const sub = r.submission || {};
+          tb.innerHTML += `
+            <tr>
+              <td>${escapeHtml(r.issuance_id)}</td>
+              <td>#${escapeHtml(r.assignment_id)} — ${escapeHtml(r.assignment_title)}</td>
+              <td>${escapeHtml(r.student.name)}<span class="secondary-text">${escapeHtml(r.student.email)}</span></td>
+              <td>${escapeHtml(prettyTime(r.issued_at))}</td>
+              <td>${badge(r.status)}</td>
+              <td>${sub.status ? badge(sub.status) : '—'}${sub.submitted_at ? `<span class="secondary-text">${escapeHtml(prettyTime(sub.submitted_at))}</span>` : ''}</td>
+            </tr>`;
+        });
+      }
+      const token = localStorage.getItem('token')||'';
+      document.getElementById('csvIssuances').href = makeUrl('/prof/issuances/csv') + '?token=' + encodeURIComponent(token);
+    }
+    document.getElementById('refreshIssued').onclick = loadIssued;
+    loadIssued();
+
+    /* ===== Submissions ===== */
+    async function loadSubs(){
+      const rows = await api('/prof/submissions');
+      const tb = document.querySelector('#subsTable tbody');
+      tb.innerHTML = '';
+      if (!rows.length) {
+        tb.innerHTML = `<tr><td colspan="6" class="table-empty">No submissions yet.</td></tr>`;
+      } else {
+        rows.forEach(r=>{
+          tb.innerHTML += `
+            <tr>
+              <td>${escapeHtml(r.issuance_id || '—')}</td>
+              <td>#${escapeHtml(r.assignment_id || '—')} — ${escapeHtml(r.assignment_title || '—')}</td>
+              <td>${escapeHtml(r.student.name)}<span class="secondary-text">${escapeHtml(r.student.email)}</span></td>
+              <td>${escapeHtml(prettyTime(r.submitted_at))}</td>
+              <td>${badge(r.status)}</td>
+              <td>${escapeHtml(r.file || '—')}</td>
+            </tr>`;
+        });
+      }
+      const token = localStorage.getItem('token')||'';
+      document.getElementById('csvSubs').href = makeUrl('/prof/submissions/csv') + '?token=' + encodeURIComponent(token);
+    }
+    document.getElementById('refreshSubs').onclick = loadSubs;
+    loadSubs();
+
+    /* ===== Reset ===== */
+    document.getElementById('resetBtn').onclick = async () => {
+      const scope = document.getElementById('resetScope').value;
+      const confirmTxt = document.getElementById('resetConfirm').value.trim();
+      const box = document.getElementById('resetStatus');
+      if (confirmTxt !== 'RESET') { alert('Please type RESET to confirm.'); return; }
+
+      const resetBtn = document.getElementById('resetBtn');
+      resetBtn.disabled = true;
+      box.className = 'submit-status';
+      box.textContent = 'Resetting system…';
+      box.classList.remove('hidden');
+
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch(makeUrl('/admin/reset') + '?token=' + encodeURIComponent(token), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirm: 'RESET', scope })
+        });
+        if (res.ok) { box.classList.add('submit-ok'); box.textContent = 'System reset completed.'; }
+        else         { box.classList.add('submit-bad'); box.textContent = 'System reset failed.'; }
+      } catch (e) {
+        box.classList.add('submit-bad');
+        box.textContent = 'Reset error: ' + (e?.message || 'Unknown error');
+      } finally {
+        resetBtn.disabled = false;
+      }
+    };
+
+    /* ===== Crypto Lab toggle ===== */
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('openCryptoLab');
+      const lab = document.getElementById('cryptoLab');
+      if (btn && lab) {
+        btn.addEventListener('click', () => {
+          lab.classList.toggle('hidden');
+          btn.textContent = lab.classList.contains('hidden') ? 'Open crypto lab' : 'Close crypto lab';
+          if (!lab.classList.contains('hidden')) lab.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+    });
+
+    /* ===== Crypto Lab logic ===== */
+    const LAB = { lastPreviewUrl: null, ptB64: null };
+    function revokePreviewUrl(){ if (LAB.lastPreviewUrl){ URL.revokeObjectURL(LAB.lastPreviewUrl); LAB.lastPreviewUrl = null; } }
+    window.addEventListener('beforeunload', revokePreviewUrl);
+
+    function b64ByteLen(b64){ const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0; return Math.floor(b64.length * 3/4) - pad; }
+    const $ = id => document.getElementById(id);
+    function setText(id, txt=""){ const el=$(id); if(el) el.textContent = txt ?? ""; }
+    const b64ToBytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const bytesToB64 = u8 => { let s=""; u8.forEach(b=>s+=String.fromCharCode(b)); return btoa(s); };
+    const tamperB64  = b64 => { const a=b64ToBytes(b64); if(a.length) a[0]^=1; return bytesToB64(a); };
+
+    $('lab_btnSign')?.addEventListener('click', async ()=>{
+      const fd = new FormData(); fd.append('header_json', $('lab_hdr').value);
+      const r = await fetch('/api/demo/sign-header', { method:'POST', headers: authHeaders(), body:fd });
+      const j = await r.json();
+      setText('lab_aad', j.canonicalAAD); setText('lab_sig', j.signatureHex);
+      $('lab_verified').textContent = j.verified ? 'true' : 'false';
+      $('lab_verified').className = j.verified ? 'badge ok' : 'badge bad';
+      setText('lab_signMsg', 'Header signed using RSA-PSS (SHA-256).');
+    });
+
+    $('lab_btnVerify')?.addEventListener('click', async ()=>{
+      const sigHex = $('lab_sig').textContent.trim();
+      if (!sigHex || sigHex.startsWith('(will appear here)')) {
+        $('lab_signMsg').textContent = 'Sign the header first.';
+        $('lab_verified').textContent = 'false'; $('lab_verified').className = 'badge bad'; return;
+      }
+      const fd = new FormData(); fd.append('header_json', $('lab_hdr').value); fd.append('signatureHex', sigHex);
+      try {
+        const r = await fetch('/api/demo/verify-header', { method:'POST', headers: authHeaders(), body:fd });
+        const j = await r.json();
+        $('lab_aad').textContent = j.canonicalAAD || '(no AAD)';
+        $('lab_verified').textContent = j.verified ? 'true' : 'false';
+        $('lab_verified').className = j.verified ? 'badge ok' : 'badge bad';
+        $('lab_signMsg').textContent = 'Verification complete.';
+      } catch { $('lab_signMsg').textContent = 'Verification failed.'; $('lab_verified').textContent = 'false'; $('lab_verified').className = 'badge bad'; }
+    });
+
+    let lab_lastZipB64 = null;
+
+    $('lab_btnEncrypt')?.addEventListener('click', async ()=>{
+      const f = $('lab_file').files[0]; if(!f){ alert('Choose a file'); return; }
+      $('lab_btnEncrypt').disabled = true;
+      try {
+        const fd = new FormData(); fd.append('header_json', $('lab_hdr').value); fd.append('file', f);
+        const r = await fetch('/api/demo/aes-gcm-encrypt', { method:'POST', headers: authHeaders(), body:fd });
+        if(!r.ok){ alert('Encrypt failed'); return; }
+        const j = await r.json();
+        $('lab_key').textContent  = clip(j.keyB64);  $('lab_iv').textContent   = clip(j.ivB64);
+        $('lab_aad2').textContent = j.aad || '';       $('lab_ct').textContent   = clip(j.ciphertextB64, 512);
+        $('lab_tag').textContent  = clip(j.tagB64);
+        $('lab_keyLen').textContent = b64ByteLen(j.keyB64) + ' bytes';  $('lab_ivLen').textContent  = b64ByteLen(j.ivB64) + ' bytes';
+        $('lab_ctLen').textContent  = b64ByteLen(j.ciphertextB64) + ' bytes'; $('lab_tagLen').textContent = b64ByteLen(j.tagB64) + ' bytes';
+        $('lab_zipInfo').textContent = `Built ZIP for ${j.fileName} (${j.fileSize} bytes).`;
+        lab_lastZipB64 = j.zipB64;
+        $('lab_keyIn').value = j.keyB64; $('lab_ivIn').value  = j.ivB64;
+        $('lab_ctIn').value  = j.ciphertextB64; $('lab_tagIn').value = j.tagB64; $('lab_aadIn').value = j.aad;
+        LAB.ptB64 = null; revokePreviewUrl();
+        $('lab_pt').textContent = ''; $('lab_preview').src = 'about:blank';
+      } finally { $('lab_btnEncrypt').disabled = false; }
+    });
+
+    $('lab_btnDownloadZip')?.addEventListener('click', ()=>{
+      if(!lab_lastZipB64){ alert('Encrypt first.'); return; }
+      const blob = new Blob([Uint8Array.from(atob(lab_lastZipB64),(c)=>c.charCodeAt(0))], {type:'application/zip'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'CryptoLab.zip'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 500);
+    });
+
+    $('lab_btnTamper')?.addEventListener('click', ()=>{
+      if(!$('lab_ctIn').value){ alert('Nothing to tamper.'); return; }
+      $('lab_ctIn').value = tamperB64($('lab_ctIn').value);
+      $('lab_decMsg').innerHTML = '<span class="ok">Tampered 1 byte in ciphertext.</span>';
+    });
+
+    $('lab_btnDecrypt')?.addEventListener('click', async ()=>{
+      const fd = new FormData();
+      fd.append('keyB64', $('lab_keyIn').value.trim()); fd.append('ivB64', $('lab_ivIn').value.trim());
+      fd.append('aad', $('lab_aadIn').value); fd.append('ciphertextB64', $('lab_ctIn').value.trim());
+      fd.append('tagB64', $('lab_tagIn').value.trim());
+      const r = await fetch('/api/demo/aes-gcm-decrypt', { method:'POST', headers: authHeaders(), body:fd });
+      if(!r.ok){
+        let t = 'Decryption failed';
+        try { const j = await r.json(); t = j.detail || t; } catch {}
+        $('lab_decMsg').innerHTML = `<span class="bad">${t}</span>`;
+        LAB.ptB64 = null; revokePreviewUrl(); $('lab_pt').textContent = ''; $('lab_preview').src = 'about:blank'; return;
+      }
+      const j = await r.json(); LAB.ptB64 = j.plaintextB64;
+      $('lab_decMsg').innerHTML = `<span class="ok">Decryption OK.</span> Plaintext: ${j.plaintextSize} bytes.`;
+      $('lab_pt').textContent = `(PDF plaintext in memory — ${j.plaintextSize} bytes)`;
+    });
+
+    $('lab_btnPreview')?.addEventListener('click', ()=>{
+      if (!LAB.ptB64) { $('lab_decMsg').innerHTML = '<span class="bad">Decrypt first.</span>'; return; }
+      revokePreviewUrl();
+      const bin = atob(LAB.ptB64); const u8 = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      const blob = new Blob([u8],{type:'application/pdf'});
+      LAB.lastPreviewUrl = URL.createObjectURL(blob);
+      $('lab_preview').src = LAB.lastPreviewUrl;
+    });
+  </script>
+</body>
+</html>

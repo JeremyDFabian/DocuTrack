@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DocuTrack — Sign in</title>
+  <script>(function(){try{if(localStorage.getItem('theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
+  <script>
+    // Redirect already-authenticated users away from the login page.
+    // Expired/invalid tokens are cleared so the user sees a fresh form.
+    (function () {
+      try {
+        var token = localStorage.getItem('token');
+        var role  = localStorage.getItem('role');
+        if (!token || !role) return;
+
+        var payload = JSON.parse(atob(token.split('.')[1]));
+        var now = Math.floor(Date.now() / 1000);
+
+        if (payload && payload.exp && payload.exp > now) {
+          if (role === 'professor')      location.replace('/professor');
+          else if (role === 'student')   location.replace('/student');
+          return;
+        }
+
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('name');
+      } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('name');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      gap: 14px;
+    }
+
+    .auth-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink-strong);
+      letter-spacing: -0.005em;
+    }
+    .auth-brand .mark {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: var(--accent);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px;
+    }
+
+    .auth-card h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink-strong);
+    }
+    .auth-card .sub {
+      margin-top: 4px;
+      font-size: var(--fs-sm);
+      color: var(--ink-muted);
+    }
+
+    .auth-form {
+      margin-top: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .err-msg {
+      min-height: 18px;
+      font-size: var(--fs-sm);
+      color: var(--danger-ink);
+    }
+
+    .btn-block {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: var(--fs-md);
+    }
+
+    .auth-divider {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .demo-trigger {
+      width: 100%;
+      background: transparent;
+      border: 0;
+      color: var(--ink-muted);
+      font: inherit;
+      font-size: var(--fs-sm);
+      cursor: pointer;
+      padding: 6px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: color 150ms var(--ease);
+    }
+    .demo-trigger:hover { color: var(--ink); }
+    .demo-trigger .chev {
+      font-size: 12px;
+      transition: transform 200ms var(--ease);
+    }
+    .demo-trigger.open .chev { transform: rotate(180deg); }
+
+    .demo-panel {
+      display: none;
+      margin-top: 12px;
+      padding-top: 8px;
+    }
+    .demo-panel.open {
+      display: block;
+      animation: fade-in 180ms var(--ease);
+    }
+
+    .demo-label {
+      font-size: var(--fs-xs);
+      color: var(--ink-faint);
+      margin-bottom: 10px;
+    }
+    .demo-label code {
+      font-size: 11px;
+      padding: 1px 5px;
+    }
+
+    .acct {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: background 120ms var(--ease);
+    }
+    .acct:hover { background: var(--surface-2); }
+    .acct + .acct { margin-top: 2px; }
+
+    .acct-email {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .role-tag {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: var(--r-pill);
+      letter-spacing: 0.01em;
+    }
+    .role-tag.prof    { background: var(--info-soft);   color: var(--info-ink); }
+    .role-tag.student { background: var(--ok-soft);     color: var(--ok-ink); }
+
+    .auth-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .about-btn {
+      background: transparent;
+      border: 0;
+      color: var(--ink-muted);
+      font: inherit;
+      font-size: var(--fs-sm);
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: var(--r-sm);
+      transition: color 150ms var(--ease), background 150ms var(--ease);
+    }
+    .about-btn:hover { color: var(--ink); background: var(--surface-2); }
+
+    .about-panel {
+      display: none;
+      width: 100%;
+      padding: 18px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--ink-muted);
+      font-size: var(--fs-sm);
+      line-height: 1.65;
+    }
+    .about-panel.open {
+      display: block;
+      animation: fade-in 220ms var(--ease);
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <a href="/" class="back-link floating" aria-label="Back to home">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+  </a>
+  <button type="button" class="theme-toggle floating" data-theme-toggle aria-label="Switch to light theme">
+    <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+    </svg>
+    <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+    </svg>
+  </button>
+  <div class="auth-page">
+
+    <div class="auth-brand">
+      <span class="mark" aria-hidden="true"></span>
+      DocuTrack
+    </div>
+
+    <div class="auth-card">
+      <h1>Sign in</h1>
+      <p class="sub">Access your secure document portal.</p>
+
+      <form id="loginForm" class="auth-form" autocomplete="off">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@docutrack.edu" required autocomplete="email"/>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password"/>
+        </div>
+
+        <div class="err-msg" id="errMsg"></div>
+
+        <button class="btn btn-block" type="submit" id="submitBtn">Sign in</button>
+      </form>
+
+      <div class="auth-divider">
+        <button type="button" class="demo-trigger" id="demoBtn" onclick="toggleDemo()">
+          <span>Demo accounts</span>
+          <span class="chev">▾</span>
+        </button>
+
+        <div class="demo-panel" id="demoPanel">
+          <div class="demo-label">Click a row to fill — password <code>Passw0rd!</code></div>
+          <div class="acct" onclick="fill('prof.carig@docutrack.edu')">
+            <span class="acct-email">prof.carig@docutrack.edu</span>
+            <span class="role-tag prof">professor</span>
+          </div>
+          <div class="acct" onclick="fill('k.lewins@docutrack.edu')">
+            <span class="acct-email">k.lewins@docutrack.edu</span>
+            <span class="role-tag student">student</span>
+          </div>
+          <div class="acct" onclick="fill('t.capulong@docutrack.edu')">
+            <span class="acct-email">t.capulong@docutrack.edu</span>
+            <span class="role-tag student">student</span>
+          </div>
+          <div class="acct" onclick="fill('j.fabian@docutrack.edu')">
+            <span class="acct-email">j.fabian@docutrack.edu</span>
+            <span class="role-tag student">student</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-meta">
+      <button class="about-btn" id="aboutBtn" onclick="toggleAbout()">What is DocuTrack? ▾</button>
+      <div class="about-panel" id="aboutPanel">
+        A secure academic document issuance system. Professors upload PDF templates that are encrypted with <code>AES-256-GCM</code> and signed with <code>RSA-PSS-SHA256</code>. Students receive an encrypted ZIP and submit answers, which are checked for tampering and duplication via <code>SHA-256</code> hashing.
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/script.js"></script>
+  <script>
+    function toggleAbout() {
+      const panel = document.getElementById('aboutPanel');
+      const btn   = document.getElementById('aboutBtn');
+      panel.classList.toggle('open');
+      btn.textContent = panel.classList.contains('open') ? 'What is DocuTrack? ▴' : 'What is DocuTrack? ▾';
+    }
+
+    function toggleDemo() {
+      const panel = document.getElementById('demoPanel');
+      const btn   = document.getElementById('demoBtn');
+      panel.classList.toggle('open');
+      btn.classList.toggle('open');
+    }
+
+    function fill(emailVal) {
+      document.getElementById('email').value    = emailVal;
+      document.getElementById('password').value = 'Passw0rd!';
+      document.getElementById('demoPanel').classList.remove('open');
+      document.getElementById('demoBtn').classList.remove('open');
+    }
+
+    document.getElementById('loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const err = document.getElementById('errMsg');
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      err.textContent = '';
+
+      try {
+        const res = await api('/auth/login', 'POST', {
+          email:    email.value,
+          password: password.value
+        });
+
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('role',  res.role);
+        localStorage.setItem('name',  res.name);
+
+        btn.textContent = 'Signed in';
+        btn.classList.add('granted');
+
+        if (res.role === 'professor') location.href = '/professor';
+        else if (res.role === 'student') location.href = '/student';
+        else alert('Unknown role: ' + res.role);
+
+      } catch (e) {
+        err.textContent = e.message;
+        btn.disabled = false;
+        btn.textContent = 'Sign in';
+      }
+    };
+  </script>
+</body>
+</html>
