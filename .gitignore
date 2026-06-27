@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# Tooling caches / scratch artifacts
+.playwright-cli/
+
+# Runtime-generated data
+server/storage/
+server/uploads/issuances/
+server/docutrack.db
+
+# Keys — never commit private signing material
+server/prof_keys.json
+server/keys/
