@@ -613,13 +613,25 @@ def student_issued(token: str = Depends(get_token), db: Session = Depends(get_db
     q = db.query(Issuance).filter(Issuance.student_id==me.id).all()
     items = []
     for i in q:
+        hdr = json.loads(i.header_json)
+        a = db.query(Assignment).get(i.assignment_id)
+        sub = db.query(Submission).filter(Submission.issuance_id == i.id)\
+                                  .order_by(Submission.submitted_at.desc()).first()
         items.append({
             "issuance_id": i.id,
             "assignment_id": i.assignment_id,
-            "header": json.loads(i.header_json),
-            "issued_at": json.loads(i.header_json)["issueTimestamp"],
-            "status": i.status
+            "assignment_title": a.title if a else f"Assignment #{i.assignment_id}",
+            "header": hdr,
+            "issued_at": hdr["issueTimestamp"],
+            "status": i.status,
+            "submission": None if not sub else {
+                "submitted_at": sub.submitted_at.isoformat(),
+                "status": sub.status,  # ACCEPTED / DUPLICATE / TAMPERED
+            },
         })
+
+    # newest first, so the document a student just received is at the top
+    items.sort(key=lambda r: r["issued_at"] or "", reverse=True)
     return items
 
 # Download encrypted package (zip-like JSON for demo)
