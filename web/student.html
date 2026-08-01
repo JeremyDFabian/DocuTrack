@@ -29,83 +29,45 @@
     <section class="section">
       <header class="section-head">
         <div class="section-head-text">
-          <h2 class="section-title">Issued documents</h2>
-          <p class="section-meta">Download the encrypted package, then decrypt and submit below.</p>
+          <h2 class="section-title">Your documents</h2>
+          <p class="section-meta">Open a document to read it, then submit your answer from the same row.</p>
         </div>
+        <button id="refreshDocs" class="btn ghost">Refresh</button>
       </header>
 
-      <section class="card hero">
-        <div class="table-wrap">
-          <table class="table" id="issuedTable">
-            <thead>
-              <tr><th>Issuance</th><th>Assignment</th><th>Issued at</th><th>Status</th><th>Action</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
+      <div class="doc-list" id="docList" aria-busy="true"></div>
     </section>
 
-    <section class="section">
+    <section class="section muted">
       <header class="section-head">
         <div class="section-head-text">
-          <h2 class="section-title">Work on a document</h2>
-          <p class="section-meta">Decrypt your ZIP locally, then submit your answer.</p>
+          <h2 class="section-title">Verify a package</h2>
+          <p class="section-meta">Check a <code>.zip</code> you already downloaded, without going through your list.</p>
         </div>
+        <button class="btn secondary" id="openVerify">Open verifier</button>
       </header>
 
-      <div class="grid grid-2">
-        <section class="card">
-          <h2>Decrypt package</h2>
-          <p class="sub">Upload the <code>.zip</code> you downloaded to preview or save the decrypted PDF.</p>
+      <section class="card hidden" id="verifyCard">
+        <h2>Decrypt a downloaded package</h2>
+        <p class="sub">The package is decrypted only after its signed header verifies. A tampered file fails before it opens.</p>
 
-          <div class="field">
-            <label>Encrypted ZIP</label>
-            <div class="input-file">
-              Choose encrypted ZIP
-              <input type="file" id="encZip" accept=".zip"/>
-            </div>
+        <div class="field">
+          <label for="encZip">Encrypted ZIP</label>
+          <div class="input-file">
+            <span class="file-name" data-default="Choose encrypted ZIP">Choose encrypted ZIP</span>
+            <input type="file" id="encZip" accept=".zip"/>
           </div>
-          <div class="row">
-            <button id="btnPreview" class="btn">Preview</button>
-            <button id="btnDownload" class="btn ghost">Download decrypted</button>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>Submit answer</h2>
-          <p class="sub">Upload your completed answer PDF for the given issuance.</p>
-
-          <div class="field">
-            <label for="issuanceId">Issuance ID</label>
-            <input type="number" id="issuanceId" placeholder="e.g. 3"/>
-          </div>
-          <div class="field">
-            <label>Answer PDF</label>
-            <div class="input-file">
-              Choose answer PDF
-              <input type="file" id="answerFile" accept="application/pdf"/>
-            </div>
-          </div>
-          <div class="row">
-            <button id="submitAnswer" class="btn">Submit</button>
-          </div>
-          <div id="submitStatus" class="submit-status hidden"></div>
-        </section>
-      </div>
-
-      <section class="card hidden" id="previewCard">
-        <h2>Preview</h2>
-        <iframe id="pdfViewer" class="viewer"></iframe>
+        </div>
+        <div class="row">
+          <button id="btnVerifyPreview" class="btn">Preview</button>
+          <button id="btnVerifyDownload" class="btn ghost">Download decrypted PDF</button>
+        </div>
+        <div id="verifyStatus" class="submit-status hidden"></div>
+        <iframe id="verifyViewer" class="viewer hidden" title="Decrypted document preview"></iframe>
       </section>
     </section>
 
   </main>
-
-  <div id="toast" class="toast hide">
-    <div class="title">Notice</div>
-    <div class="msg" id="toastMsg"></div>
-  </div>
 
   <script src="/static/script.js"></script>
   <script>
@@ -113,98 +75,368 @@
     document.getElementById('stuName').textContent = localStorage.getItem('name') || '';
     document.getElementById('logoutBtn').onclick = logout;
 
-    function toast(msg){
-      const t = document.getElementById('toast');
-      document.getElementById('toastMsg').textContent = msg;
-      t.classList.remove('hide');
-      setTimeout(()=>t.classList.add('hide'), 2400);
-    }
+    const list = document.getElementById('docList');
 
-    function badge(status){
-      const s = (status||'').toLowerCase();
-      const map = { issued:'issued', downloaded:'downloaded', decrypted:'decrypted', submitted:'submitted', tampered:'tampered' };
-      return `<span class="badge ${map[s]||'issued'}">${status}</span>`;
-    }
+    // rows: latest server payload. open: which panel each row has expanded.
+    // urls: blob URLs held for open previews, revoked when the panel closes.
+    const STATE = { rows: [], open: new Map(), urls: new Map() };
 
-    async function loadIssued(){
-      const rows = await api('/student/issued');
-      const tbody = document.querySelector('#issuedTable tbody');
-      tbody.innerHTML = '';
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="table-empty">No assignments issued to you yet.</td></tr>`;
-        return;
-      }
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${escapeHtml(r.issuance_id)}</td>
-          <td>${escapeHtml(r.assignment_id)}</td>
-          <td>${escapeHtml(prettyTime(r.issued_at))}</td>
-          <td>${badge(r.status)}</td>
-          <td><button data-id="${escapeHtml(r.issuance_id)}" class="btn ghost dl">Download ZIP</button></td>`;
-        tbody.appendChild(tr);
-      });
-      tbody.querySelectorAll('.dl').forEach(btn=>{
-        btn.onclick = async ()=>{
-          const id = btn.getAttribute('data-id');
-          const url = makeUrl('/student/download/' + id) + '?token=' + encodeURIComponent(localStorage.getItem('token')||'');
-          window.open(url, '_blank');
-          toast('Encrypted package is downloading…');
-        };
-      });
-    }
-    loadIssued();
-
-    document.getElementById('submitAnswer').onclick = async ()=>{
-      const issId = Number(document.getElementById('issuanceId').value);
-      const f = document.getElementById('answerFile').files[0];
-      if(!issId || !f){ toast('Please set Issuance ID and pick your answer PDF.'); return; }
-      const fd = new FormData(); fd.append('file', f);
-      try {
-        const res = await apiForm('/student/submit/'+issId, fd);
-        const box = document.getElementById('submitStatus');
-        box.className = 'submit-status';
-        if (res.status === 'ACCEPTED') { box.textContent = 'Submission accepted.'; box.classList.add('submit-ok'); }
-        else if (res.status === 'DUPLICATE') { box.textContent = 'Submission flagged as duplicate.'; box.classList.add('submit-bad'); }
-        else { box.textContent = 'Submission rejected.'; box.classList.add('submit-bad'); }
-        box.classList.remove('hidden');
-        toast('Submission processed.');
-      } catch(e){ toast('Submit failed.'); }
+    /* ===== Status vocabulary ===== */
+    const NEXT_STEP = {
+      ISSUED:     'Open it to decrypt and read.',
+      DOWNLOADED: 'Open it to decrypt and read.',
+      DECRYPTED:  'Ready for your answer.',
+      SUBMITTED:  'Answer received.',
     };
 
-    async function postDecrypt(file){
-      const fd = new FormData(); fd.append('file', file);
-      const res = await fetch(makeUrl('/student/decrypt/upload'), { method:'POST', headers: authHeaders(), body:fd });
-      if (!res.ok) {
-        let msg = 'Decryption failed';
-        try { const j = await res.json(); msg = j.detail || JSON.stringify(j); } catch {}
-        throw new Error(msg);
+    const SUBMISSION_BADGE = {
+      ACCEPTED:  'ok',
+      DUPLICATE: 'downloaded',
+      TAMPERED:  'tampered',
+    };
+
+    function badge(status, cls) {
+      return `<span class="badge ${cls || (status || '').toLowerCase()}">${escapeHtml(status)}</span>`;
+    }
+
+    function releaseUrl(id) {
+      const url = STATE.urls.get(id);
+      if (url) { URL.revokeObjectURL(url); STATE.urls.delete(id); }
+    }
+    window.addEventListener('beforeunload', () => {
+      STATE.urls.forEach((url) => URL.revokeObjectURL(url));
+    });
+
+    /* ===== Render ===== */
+    function render() {
+      list.removeAttribute('aria-busy');
+
+      if (!STATE.rows.length) {
+        list.innerHTML = `
+          <div class="state">
+            <p class="state-title">No documents yet</p>
+            <p class="state-hint">When your professor issues an assignment to you, its encrypted package appears here. Nothing to download in the meantime.</p>
+          </div>`;
+        return;
       }
+
+      list.innerHTML = STATE.rows.map((r) => {
+        const id       = r.issuance_id;
+        const sub      = r.submission;
+        const open     = STATE.open.get(id);
+        const answered = r.status === 'SUBMITTED';
+
+        return `
+          <div class="doc-item" data-id="${escapeHtml(id)}"${open ? ' data-active="true"' : ''}>
+            <div class="doc-row">
+              <div>
+                <div class="doc-title">
+                  ${escapeHtml(r.assignment_title)}
+                  ${badge(r.status)}
+                  ${sub ? badge(sub.status, SUBMISSION_BADGE[sub.status] || 'issued') : ''}
+                </div>
+                <div class="doc-meta">
+                  <span class="mono">issuance ${escapeHtml(id)}</span>
+                  <span>Issued ${escapeHtml(prettyTime(r.issued_at))}</span>
+                  <span>${sub ? 'Submitted ' + escapeHtml(prettyTime(sub.submitted_at)) : escapeHtml(NEXT_STEP[r.status] || '')}</span>
+                </div>
+              </div>
+              <div class="doc-actions">
+                <button class="btn secondary sm" data-act="preview" data-id="${escapeHtml(id)}" aria-expanded="${open === 'preview'}">
+                  ${open === 'preview' ? 'Close' : 'Open'}
+                </button>
+                <button class="btn ghost sm" data-act="zip" data-id="${escapeHtml(id)}">Download ZIP</button>
+                <button class="btn ${answered ? 'ghost' : ''} sm" data-act="submit" data-id="${escapeHtml(id)}" aria-expanded="${open === 'submit'}">
+                  ${answered ? 'Resubmit' : 'Submit answer'}
+                </button>
+              </div>
+            </div>
+            ${open === 'preview' ? `
+              <div class="doc-panel">
+                <iframe class="viewer" data-viewer="${escapeHtml(id)}" title="Decrypted document preview"></iframe>
+              </div>` : ''}
+            ${open === 'submit' ? `
+              <div class="doc-panel">
+                <form class="panel-form" data-form="${escapeHtml(id)}">
+                  <div class="field">
+                    <label for="answer-${escapeHtml(id)}">Your answer PDF for ${escapeHtml(r.assignment_title)}</label>
+                    <div class="input-file">
+                      <span class="file-name" data-default="Choose answer PDF">Choose answer PDF</span>
+                      <input type="file" id="answer-${escapeHtml(id)}" accept="application/pdf" required/>
+                    </div>
+                  </div>
+                  <button class="btn" type="submit">${answered ? 'Replace submission' : 'Submit'}</button>
+                </form>
+                <div class="submit-status hidden" data-status="${escapeHtml(id)}"></div>
+              </div>` : ''}
+          </div>`;
+      }).join('');
+
+      initFileInputs(list);
+
+      // Re-attach the blob src for a preview that was already fetched.
+      STATE.urls.forEach((url, id) => {
+        const frame = list.querySelector(`[data-viewer="${id}"]`);
+        if (frame) frame.src = url;
+      });
+    }
+
+    /* ===== Load ===== */
+    async function loadDocs() {
+      list.setAttribute('aria-busy', 'true');
+      list.innerHTML = `
+        <div class="doc-item"><div class="doc-row"><div>
+          <span class="skel w-40"></span>
+          <span class="skel w-60" style="margin-top:10px"></span>
+        </div></div></div>
+        <div class="doc-item"><div class="doc-row"><div>
+          <span class="skel w-60"></span>
+          <span class="skel w-40" style="margin-top:10px"></span>
+        </div></div></div>`;
+
+      try {
+        STATE.rows = await api('/student/issued');
+        render();
+      } catch (e) {
+        list.removeAttribute('aria-busy');
+        list.innerHTML = `
+          <div class="state state-bad">
+            <p class="state-title">Couldn't load your documents</p>
+            <p class="state-hint">${escapeHtml(e.message)}</p>
+            <button class="btn secondary" id="retryDocs">Try again</button>
+          </div>`;
+        document.getElementById('retryDocs').onclick = loadDocs;
+      }
+    }
+
+    document.getElementById('refreshDocs').onclick = loadDocs;
+    loadDocs();
+
+    /* ===== Local status advance =====
+       The view/download endpoints move an issuance forward server-side.
+       Mirror that locally so the badge is right without a full reload. */
+    function advance(id, status) {
+      const row = STATE.rows.find((r) => r.issuance_id === id);
+      if (!row) return false;
+      const ladder = ['ISSUED', 'DOWNLOADED', 'DECRYPTED', 'SUBMITTED'];
+      if (ladder.indexOf(status) > ladder.indexOf(row.status)) {
+        row.status = status;
+        return true;
+      }
+      return false;
+    }
+
+    /* ===== Row actions ===== */
+    list.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-act]');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+
+      if (btn.dataset.act === 'preview') return togglePreview(id, btn);
+      if (btn.dataset.act === 'zip')     return downloadZip(id, btn);
+      if (btn.dataset.act === 'submit')  return toggleSubmit(id);
+    });
+
+    async function togglePreview(id, btn) {
+      if (STATE.open.get(id) === 'preview') {
+        STATE.open.delete(id);
+        releaseUrl(id);
+        render();
+        return;
+      }
+
+      // Fetch with auth headers rather than pointing the iframe at ?token=,
+      // so failures surface as messages and the token stays out of the URL.
+      await withBusy(btn, 'Opening', async () => {
+        try {
+          const res = await fetch(`/student/view/${id}`, { headers: authHeaders() });
+          if (!res.ok) throw new Error(await readError(res));
+
+          releaseUrl(id);
+          STATE.urls.set(id, URL.createObjectURL(await res.blob()));
+          STATE.open.set(id, 'preview');
+          advance(id, 'DECRYPTED');
+          render();
+        } catch (e) {
+          toast(e.message, 'bad');
+        }
+      });
+    }
+
+    async function downloadZip(id, btn) {
+      await withBusy(btn, 'Preparing', async () => {
+        try {
+          const res = await fetch(`/student/download/${id}`, { headers: authHeaders() });
+          if (!res.ok) throw new Error(await readError(res));
+
+          const row = STATE.rows.find((r) => r.issuance_id === id);
+          const url = URL.createObjectURL(await res.blob());
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `assignment_${row ? row.assignment_id : id}_issuance_${id}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+          toast('Sealed package downloaded.', 'ok');
+          if (advance(id, 'DOWNLOADED')) render();
+        } catch (e) {
+          toast(e.message, 'bad');
+        }
+      });
+    }
+
+    function toggleSubmit(id) {
+      if (STATE.open.get(id) === 'submit') STATE.open.delete(id);
+      else {
+        releaseUrl(id);
+        STATE.open.set(id, 'submit');
+      }
+      render();
+    }
+
+    /* ===== Submit ===== */
+    list.addEventListener('submit', async (ev) => {
+      const form = ev.target.closest('[data-form]');
+      if (!form) return;
+      ev.preventDefault();
+
+      const id    = Number(form.dataset.form);
+      const input = form.querySelector('input[type="file"]');
+      const file  = input.files[0];
+      const box   = list.querySelector(`[data-status="${id}"]`);
+      const btn   = form.querySelector('button[type="submit"]');
+
+      if (!file) {
+        input.closest('.input-file').setAttribute('aria-invalid', 'true');
+        toast('Choose your answer PDF first.', 'bad');
+        return;
+      }
+
+      await withBusy(btn, 'Submitting', async () => {
+        const fd = new FormData();
+        fd.append('file', file);
+
+        box.className = 'submit-status';
+        box.textContent = '';
+
+        try {
+          const res = await apiForm('/student/submit/' + id, fd);
+
+          if (res.status === 'ACCEPTED') {
+            box.classList.add('submit-ok');
+            box.textContent = 'Submission accepted. Your answer is recorded and hashed.';
+            toast('Submission accepted.', 'ok');
+          } else if (res.status === 'DUPLICATE') {
+            box.classList.add('submit-bad');
+            box.textContent = 'Flagged as duplicate — these exact answer bytes were already submitted for another issuance.';
+            toast('Submission flagged as duplicate.', 'bad');
+          } else {
+            box.classList.add('submit-bad');
+            box.textContent = 'Submission rejected: ' + res.status + '.';
+            toast('Submission rejected.', 'bad');
+          }
+
+          box.classList.remove('hidden');
+
+          // Reload so the row shows the recorded submission and its verdict.
+          const rows = await api('/student/issued');
+          STATE.rows = rows;
+          STATE.open.delete(id);
+          render();
+        } catch (e) {
+          box.className = 'submit-status submit-bad';
+          box.textContent = e.message;
+          box.classList.remove('hidden');
+          toast('Submit failed.', 'bad');
+        }
+      });
+    });
+
+    /* ===== Package verifier (secondary tool) ===== */
+    const verifyCard = document.getElementById('verifyCard');
+    const verifyBox  = document.getElementById('verifyStatus');
+    const verifyView = document.getElementById('verifyViewer');
+    let verifyUrl = null;
+
+    document.getElementById('openVerify').addEventListener('click', (ev) => {
+      const hidden = verifyCard.classList.toggle('hidden');
+      ev.currentTarget.textContent = hidden ? 'Open verifier' : 'Close verifier';
+      if (!hidden) verifyCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    async function postDecrypt(file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(makeUrl('/student/decrypt/upload'), {
+        method: 'POST', headers: authHeaders(), body: fd
+      });
+      if (!res.ok) throw new Error(await readError(res));
       return res.blob();
     }
 
-    document.getElementById('btnPreview').onclick = async ()=>{
+    function chosenZip() {
       const input = document.getElementById('encZip');
-      if (!input.files[0]) { toast('Choose the encrypted .zip first.'); return; }
-      try {
-        const blob = await postDecrypt(input.files[0]);
-        document.getElementById('pdfViewer').src = URL.createObjectURL(blob);
-        document.getElementById('previewCard').classList.remove('hidden');
-        toast('Decryption successful. Preview below.');
-      } catch(e){ toast(e.message); }
+      const file = input.files[0];
+      if (!file) {
+        input.closest('.input-file').setAttribute('aria-invalid', 'true');
+        toast('Choose the encrypted .zip first.', 'bad');
+        return null;
+      }
+      return file;
+    }
+
+    function showVerify(kind, message) {
+      verifyBox.className = 'submit-status ' + kind;
+      verifyBox.textContent = message;
+      verifyBox.classList.remove('hidden');
+    }
+
+    document.getElementById('btnVerifyPreview').onclick = async (ev) => {
+      const file = chosenZip();
+      if (!file) return;
+
+      await withBusy(ev.currentTarget, 'Verifying', async () => {
+        try {
+          const blob = await postDecrypt(file);
+          if (verifyUrl) URL.revokeObjectURL(verifyUrl);
+          verifyUrl = URL.createObjectURL(blob);
+          verifyView.src = verifyUrl;
+          verifyView.classList.remove('hidden');
+          showVerify('submit-ok', 'Header signature verified and package decrypted.');
+        } catch (e) {
+          verifyView.classList.add('hidden');
+          showVerify('submit-bad', e.message);
+        }
+      });
     };
 
-    document.getElementById('btnDownload').onclick = async ()=>{
-      const input = document.getElementById('encZip');
-      if (!input.files[0]) { toast('Choose the encrypted .zip first.'); return; }
-      try {
-        const blob = await postDecrypt(input.files[0]);
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob); a.download = 'decrypted.pdf';
-        document.body.appendChild(a); a.click(); a.remove();
-        toast('Decrypted PDF downloaded.');
-      } catch(e){ toast(e.message); }
+    document.getElementById('btnVerifyDownload').onclick = async (ev) => {
+      const file = chosenZip();
+      if (!file) return;
+
+      await withBusy(ev.currentTarget, 'Verifying', async () => {
+        try {
+          const blob = await postDecrypt(file);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'decrypted.pdf';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          showVerify('submit-ok', 'Verified and downloaded.');
+        } catch (e) {
+          showVerify('submit-bad', e.message);
+        }
+      });
     };
+
+    window.addEventListener('beforeunload', () => {
+      if (verifyUrl) URL.revokeObjectURL(verifyUrl);
+    });
   </script>
 </body>
 </html>
