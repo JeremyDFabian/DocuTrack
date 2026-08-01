@@ -30,23 +30,23 @@
       <header class="section-head">
         <div class="section-head-text">
           <h2 class="section-title">Manage assignments</h2>
-          <p class="section-meta">Upload templates, then issue them to selected students.</p>
+          <p class="section-meta">Upload a template, pick it from the list, then issue it to students.</p>
         </div>
       </header>
 
       <div class="grid grid-2">
         <section class="card">
           <h2>Upload assignment</h2>
-          <p class="sub">Upload a PDF template to create a new assignment.</p>
+          <p class="sub">A PDF template becomes the source document every issued copy is encrypted from.</p>
 
           <div class="field">
             <label for="title">Title (optional)</label>
             <input type="text" id="title" placeholder="e.g. Problem Set 1"/>
           </div>
           <div class="field">
-            <label>Template PDF</label>
+            <label for="templateFile">Template PDF</label>
             <div class="input-file">
-              Choose PDF
+              <span class="file-name" data-default="Choose PDF">Choose PDF</span>
               <input type="file" id="templateFile" accept="application/pdf"/>
             </div>
           </div>
@@ -58,17 +58,16 @@
 
         <section class="card">
           <h2>Assignments</h2>
-          <p class="sub">Click a row to select it for issuance.</p>
+          <p class="sub">Select the one you want to issue.</p>
 
           <div class="table-wrap">
             <table class="table" id="assignTable">
-              <thead><tr><th>ID</th><th>Title</th><th>Hash</th><th>Created</th></tr></thead>
+              <thead><tr><th>ID</th><th>Title</th><th>Template hash</th><th>Created</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
 
           <div class="row">
-            <input type="number" id="assignmentId" placeholder="Selected ID"/>
             <button id="refreshAssign" class="btn ghost">Refresh</button>
           </div>
         </section>
@@ -76,14 +75,29 @@
 
       <section class="card">
         <h2>Issue to students</h2>
-        <p class="sub">Select students and issue the selected assignment.</p>
+        <p class="sub">Every student receives a separately encrypted copy with its own signed header.</p>
 
         <div class="field">
-          <label for="students">Students <span class="faint">(hold Ctrl / Cmd to multi-select)</span></label>
-          <select id="students" multiple size="7"></select>
+          <span class="form-label">Assignment</span>
+          <div id="assignChip"></div>
         </div>
+
+        <div class="field">
+          <span class="form-label" id="studentsLabel">Students</span>
+          <div class="picker">
+            <div class="picker-bar">
+              <input type="text" class="picker-search" id="studentSearch"
+                     placeholder="Filter by name or email" aria-label="Filter students"/>
+              <button type="button" class="btn ghost sm" id="toggleAll">Select all</button>
+              <span class="picker-count" id="pickCount">None selected</span>
+            </div>
+            <div class="picker-list" id="studentList" role="group" aria-labelledby="studentsLabel"></div>
+          </div>
+        </div>
+
         <div class="row">
-          <button id="issueBtn" class="btn">Issue</button>
+          <button id="issueBtn" class="btn" disabled>Issue</button>
+          <span class="faint" id="issueHint" style="font-size:13px;"></span>
         </div>
         <div id="issueStatus" class="submit-status hidden"></div>
       </section>
@@ -93,14 +107,14 @@
       <header class="section-head">
         <div class="section-head-text">
           <h2 class="section-title">Activity</h2>
-          <p class="section-meta">Track issuances and submissions in real time.</p>
+          <p class="section-meta">Track issuances and submissions as they happen.</p>
         </div>
       </header>
 
       <section class="card">
         <h2>Issued files</h2>
         <div class="row">
-          <a id="csvIssuances" class="btn ghost" href="#" target="_blank">Export CSV</a>
+          <a id="csvIssuances" class="btn ghost" href="#" target="_blank" rel="noopener">Export CSV</a>
           <button id="refreshIssued" class="btn ghost">Refresh</button>
         </div>
 
@@ -117,7 +131,7 @@
       <section class="card">
         <h2>Submissions</h2>
         <div class="row">
-          <a id="csvSubs" class="btn ghost" href="#" target="_blank">Export CSV</a>
+          <a id="csvSubs" class="btn ghost" href="#" target="_blank" rel="noopener">Export CSV</a>
           <button id="refreshSubs" class="btn ghost">Refresh</button>
         </div>
 
@@ -149,7 +163,7 @@
       <div class="grid grid-2">
         <div>
           <div class="field">
-            <label>Header JSON (editable)</label>
+            <label for="lab_hdr">Header JSON (editable)</label>
             <textarea id="lab_hdr" rows="10" class="lab-input">
 {
   "assignmentID": "CSXXX-01",
@@ -188,9 +202,9 @@
       <div class="grid grid-2">
         <div>
           <div class="field">
-            <label>File to encrypt</label>
+            <label for="lab_file">File to encrypt</label>
             <div class="input-file">
-              Choose file
+              <span class="file-name" data-default="Choose file">Choose file</span>
               <input id="lab_file" type="file"/>
             </div>
           </div>
@@ -243,15 +257,15 @@
       <div class="grid grid-2">
         <div>
           <div class="field">
-            <label>Ciphertext to decrypt (base64)</label>
+            <label for="lab_ctIn">Ciphertext to decrypt (base64)</label>
             <textarea id="lab_ctIn" rows="6" class="lab-input"></textarea>
           </div>
           <div class="field">
-            <label>Tag (base64)</label>
+            <label for="lab_tagIn">Tag (base64)</label>
             <input id="lab_tagIn" class="lab-input"/>
           </div>
           <div class="field">
-            <label>AAD (exact canonical header)</label>
+            <label for="lab_aadIn">AAD (exact canonical header)</label>
             <textarea id="lab_aadIn" rows="4" class="lab-input"></textarea>
           </div>
           <div class="row">
@@ -262,21 +276,21 @@
         </div>
         <div>
           <div class="field">
-            <label>Key (base64)</label>
+            <label for="lab_keyIn">Key (base64)</label>
             <input id="lab_keyIn" class="lab-input"/>
           </div>
           <div class="field">
-            <label>IV (base64)</label>
+            <label for="lab_ivIn">IV (base64)</label>
             <input id="lab_ivIn" class="lab-input"/>
           </div>
           <div class="field">
-            <label>Plaintext</label>
+            <label for="lab_pt">Plaintext</label>
             <pre id="lab_pt" class="lab-pre"></pre>
           </div>
           <div class="row">
             <button class="btn ghost" id="lab_btnPreview">Preview PDF</button>
           </div>
-          <iframe id="lab_preview" class="viewer mt-12" style="height: 60vh;"></iframe>
+          <iframe id="lab_preview" class="viewer mt-12" style="height: 60vh;" title="Decrypted preview"></iframe>
         </div>
       </div>
     </section>
@@ -286,11 +300,11 @@
         <p class="sub">Type <code>RESET</code> to confirm. Choose what to clear.</p>
 
         <div class="row">
-          <select id="resetScope" style="flex:1; min-width: 260px;">
+          <select id="resetScope" aria-label="Reset scope" style="flex:1; min-width: 260px;">
             <option value="issuances" selected>Issuances &amp; submissions only</option>
             <option value="all">Everything (also deletes assignments / templates)</option>
           </select>
-          <input id="resetConfirm" placeholder="Type RESET to confirm" style="flex:1; min-width: 200px;"/>
+          <input id="resetConfirm" aria-label="Type RESET to confirm" placeholder="Type RESET to confirm" style="flex:1; min-width: 200px;"/>
           <button id="resetBtn" class="btn danger">Reset</button>
         </div>
         <div id="resetStatus" class="submit-status hidden"></div>
@@ -299,114 +313,295 @@
 
   </main>
 
-  <div id="toast" class="toast hide">
-    <div class="title">Notice</div>
-    <div class="msg" id="toastMsg"></div>
-  </div>
-
   <script src="/static/script.js"></script>
   <script>
     ensureAuth('professor');
     document.getElementById('profName').textContent = localStorage.getItem('name') || '';
     document.getElementById('logoutBtn').onclick = logout;
 
-    function toast(msg){
-      const t = document.getElementById('toast');
-      document.getElementById('toastMsg').textContent = msg;
-      t.classList.remove('hide');
-      setTimeout(()=>t.classList.add('hide'), 2400);
-    }
+    // Selection is held here, not read back out of an input the user typed into.
+    const SEL = { assignment: null, students: new Set(), roster: [] };
 
     /* ===== Upload ===== */
-    document.getElementById('uploadBtn').onclick = async ()=>{
-      const fd = new FormData();
-      fd.append('title', document.getElementById('title').value || '');
-      const file = document.getElementById('templateFile').files[0];
-      if(!file){ toast('Pick a PDF first.'); return; }
-      fd.append('file', file);
-
-      const url = new URL('/prof/assignments/upload', window.location.origin);
-      const res = await fetch(url, { method:'POST', headers: authHeaders(), body: fd });
-      const data = await res.json();
+    document.getElementById('uploadBtn').onclick = async (ev) => {
+      const input = document.getElementById('templateFile');
+      const file = input.files[0];
       const box = document.getElementById('uploadStatus');
-      box.className = 'submit-status';
 
-      if (res.ok) {
-        box.classList.add('submit-ok');
-        box.innerHTML = `Assignment uploaded — <strong>${escapeHtml(data.title)}</strong> (#${escapeHtml(data.assignment_id)})`;
-      } else {
-        box.classList.add('submit-bad');
-        box.textContent = 'Upload failed.';
-      }
-      box.classList.remove('hidden');
-      if(res.ok){ toast('Assignment uploaded.'); loadAssignments(); }
-    };
-
-    /* ===== Load Assignments ===== */
-    async function loadAssignments(){
-      const rows = await api('/prof/assignments');
-      const tb = document.querySelector('#assignTable tbody');
-      tb.innerHTML = '';
-      if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="4" class="table-empty">No assignments yet.</td></tr>`;
+      if (!file) {
+        input.closest('.input-file').setAttribute('aria-invalid', 'true');
+        toast('Choose a PDF template first.', 'bad');
         return;
       }
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.title)}</td><td class="mono muted">${escapeHtml(r.template_hash.slice(0,16))}…</td><td>${escapeHtml(prettyTime(r.created_at))}</td>`;
-        tr.style.cursor = 'pointer';
-        tr.onclick = ()=>{ document.getElementById('assignmentId').value = r.id; toast('Selected assignment #' + r.id); };
-        tb.appendChild(tr);
-      });
-    }
-    document.getElementById('refreshAssign').onclick = loadAssignments;
-    loadAssignments();
 
-    /* ===== Students list ===== */
-    async function loadStudents(){
-      const s = document.getElementById('students');
-      const rows = await api('/users/students');
-      s.innerHTML = '';
-      rows.forEach(u=>{
-        const opt = document.createElement('option');
-        opt.value = u.id; opt.textContent = `${u.name} — ${u.email}`;
-        s.appendChild(opt);
+      await withBusy(ev.currentTarget, 'Uploading', async () => {
+        const fd = new FormData();
+        fd.append('title', document.getElementById('title').value || '');
+        fd.append('file', file);
+
+        box.className = 'submit-status';
+        try {
+          const data = await apiForm('/prof/assignments/upload', fd);
+          box.classList.add('submit-ok');
+          box.innerHTML = `Uploaded <strong>${escapeHtml(data.title)}</strong> as assignment #${escapeHtml(data.assignment_id)}, and selected it for issuing.`;
+          box.classList.remove('hidden');
+
+          document.getElementById('title').value = '';
+          input.value = '';
+          input.dispatchEvent(new Event('change'));
+
+          toast('Assignment uploaded.', 'ok');
+          await loadAssignments(data.assignment_id);
+        } catch (e) {
+          box.classList.add('submit-bad');
+          box.textContent = e.message;
+          box.classList.remove('hidden');
+          toast('Upload failed.', 'bad');
+        }
       });
+    };
+
+    /* ===== Assignments ===== */
+    const assignBody = document.querySelector('#assignTable tbody');
+
+    async function loadAssignments(selectId) {
+      tableSkeleton(assignBody, 4);
+      try {
+        const rows = await api('/prof/assignments');
+        tableReady(assignBody);
+
+        if (!rows.length) {
+          tableState(assignBody, 4, {
+            title: 'No assignments yet',
+            hint: 'Upload a PDF template on the left. It becomes the source document for every encrypted copy you issue.'
+          });
+          setAssignment(null);
+          return;
+        }
+
+        assignBody.innerHTML = '';
+        rows.forEach((r) => {
+          const tr = document.createElement('tr');
+          tr.className = 'selectable';
+          tr.tabIndex = 0;
+          tr.dataset.id = r.id;
+          tr.dataset.title = r.title;
+          tr.setAttribute('aria-selected', 'false');
+          tr.innerHTML =
+            `<td>${escapeHtml(r.id)}</td>` +
+            `<td>${escapeHtml(r.title)}</td>` +
+            `<td class="mono muted">${escapeHtml(r.template_hash.slice(0, 16))}…</td>` +
+            `<td>${escapeHtml(prettyTime(r.created_at))}</td>`;
+          assignBody.appendChild(tr);
+        });
+
+        // Keep the current selection if it still exists, else honour the caller.
+        const keep = selectId != null ? selectId
+                   : (SEL.assignment ? SEL.assignment.id : null);
+        const match = rows.find((r) => String(r.id) === String(keep));
+        setAssignment(match ? { id: match.id, title: match.title } : null);
+      } catch (e) {
+        tableState(assignBody, 4, {
+          title: "Couldn't load assignments",
+          hint: escapeHtml(e.message),
+          kind: 'bad'
+        });
+      }
     }
-    loadStudents();
+
+    function selectFromRow(tr) {
+      setAssignment({ id: Number(tr.dataset.id), title: tr.dataset.title });
+    }
+
+    assignBody.addEventListener('click', (ev) => {
+      const tr = ev.target.closest('tr.selectable');
+      if (tr) selectFromRow(tr);
+    });
+
+    assignBody.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      const tr = ev.target.closest('tr.selectable');
+      if (!tr) return;
+      ev.preventDefault();
+      selectFromRow(tr);
+    });
+
+    function setAssignment(value) {
+      SEL.assignment = value;
+
+      assignBody.querySelectorAll('tr.selectable').forEach((tr) => {
+        tr.setAttribute('aria-selected', String(value != null && String(tr.dataset.id) === String(value.id)));
+      });
+
+      const chip = document.getElementById('assignChip');
+      if (!value) {
+        chip.innerHTML = '<span class="chip-empty">No assignment selected</span>';
+      } else {
+        chip.innerHTML =
+          `<span class="chip">
+             <span class="chip-text">#${escapeHtml(value.id)} — ${escapeHtml(value.title)}</span>
+             <button type="button" class="chip-clear" id="clearAssign" aria-label="Clear selected assignment">×</button>
+           </span>`;
+        document.getElementById('clearAssign').onclick = () => setAssignment(null);
+      }
+
+      updateIssueGate();
+    }
+
+    document.getElementById('refreshAssign').onclick = () => loadAssignments();
+
+    /* ===== Student picker ===== */
+    const studentList = document.getElementById('studentList');
+
+    async function loadStudents() {
+      studentList.innerHTML = '<div class="picker-none"><span class="skel w-60"></span></div>';
+      try {
+        SEL.roster = await api('/users/students');
+        renderStudents();
+      } catch (e) {
+        studentList.innerHTML = `<div class="picker-none">${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    function renderStudents() {
+      const q = document.getElementById('studentSearch').value.trim().toLowerCase();
+      const shown = SEL.roster.filter((u) =>
+        !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
+
+      if (!SEL.roster.length) {
+        studentList.innerHTML = '<div class="picker-none">No students are registered yet.</div>';
+      } else if (!shown.length) {
+        studentList.innerHTML = `<div class="picker-none">No student matches “${escapeHtml(q)}”.</div>`;
+      } else {
+        studentList.innerHTML = shown.map((u) => `
+          <label class="picker-opt">
+            <input type="checkbox" value="${escapeHtml(u.id)}"${SEL.students.has(u.id) ? ' checked' : ''}/>
+            <span class="picker-name">${escapeHtml(u.name)}</span>
+            <span class="picker-email">${escapeHtml(u.email)}</span>
+          </label>`).join('');
+      }
+
+      updateIssueGate();
+    }
+
+    studentList.addEventListener('change', (ev) => {
+      const box = ev.target;
+      if (box.type !== 'checkbox') return;
+      const id = Number(box.value);
+      if (box.checked) SEL.students.add(id);
+      else SEL.students.delete(id);
+      updateIssueGate();
+    });
+
+    document.getElementById('studentSearch').addEventListener('input', renderStudents);
+
+    document.getElementById('toggleAll').onclick = () => {
+      const q = document.getElementById('studentSearch').value.trim().toLowerCase();
+      const shown = SEL.roster.filter((u) =>
+        !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
+      const allOn = shown.length > 0 && shown.every((u) => SEL.students.has(u.id));
+      shown.forEach((u) => allOn ? SEL.students.delete(u.id) : SEL.students.add(u.id));
+      renderStudents();
+    };
+
+    /* ===== Issue gating =====
+       The button says why it is disabled instead of failing on click. */
+    function updateIssueGate() {
+      const btn   = document.getElementById('issueBtn');
+      const hint  = document.getElementById('issueHint');
+      const count = SEL.students.size;
+
+      document.getElementById('pickCount').textContent =
+        count ? `${count} selected` : 'None selected';
+
+      const toggle = document.getElementById('toggleAll');
+      const q = document.getElementById('studentSearch').value.trim().toLowerCase();
+      const shown = SEL.roster.filter((u) =>
+        !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
+      toggle.textContent = shown.length && shown.every((u) => SEL.students.has(u.id))
+        ? 'Clear all' : 'Select all';
+
+      if (!SEL.assignment) {
+        btn.disabled = true;
+        hint.textContent = 'Select an assignment from the list above.';
+      } else if (!count) {
+        btn.disabled = true;
+        hint.textContent = 'Select at least one student.';
+      } else {
+        btn.disabled = false;
+        hint.textContent = `Creates ${count} sealed package${count === 1 ? '' : 's'}.`;
+      }
+    }
 
     /* ===== Issue ===== */
-    document.getElementById('issueBtn').onclick = async ()=>{
-      const aid = Number(document.getElementById('assignmentId').value);
-      const ids = [...document.getElementById('students').options].filter(o=>o.selected).map(o=>Number(o.value));
-      if(!aid || !ids.length){ toast('Pick assignment and at least one student.'); return; }
-      const res = await api('/prof/assignments/issue', 'POST', { assignment_id: aid, student_ids: ids });
+    document.getElementById('issueBtn').onclick = async (ev) => {
+      if (!SEL.assignment || !SEL.students.size) return;
+
+      const aid = SEL.assignment.id;
+      const ids = [...SEL.students];
       const box = document.getElementById('issueStatus');
-      box.className = 'submit-status submit-ok';
-      box.innerHTML = `Issued assignment #${aid} to ${ids.length} student${ids.length === 1 ? '' : 's'}.`;
-      box.classList.remove('hidden');
-      toast(`Issued to ${ids.length} student(s).`);
-      loadIssued();
+
+      await withBusy(ev.currentTarget, 'Issuing', async () => {
+        box.className = 'submit-status';
+        try {
+          const res = await api('/prof/assignments/issue', 'POST', {
+            assignment_id: aid, student_ids: ids
+          });
+          const made = (res.issued || []).length;
+
+          box.classList.add(made ? 'submit-ok' : 'submit-bad');
+          box.innerHTML = made
+            ? `Issued <strong>${escapeHtml(SEL.assignment.title)}</strong> to ${made} student${made === 1 ? '' : 's'}.`
+            : 'No packages were issued — the selected students could not be found.';
+          box.classList.remove('hidden');
+
+          if (made) {
+            toast(`Issued to ${made} student${made === 1 ? '' : 's'}.`, 'ok');
+            SEL.students.clear();
+            renderStudents();
+            loadIssued();
+          }
+        } catch (e) {
+          box.classList.add('submit-bad');
+          box.textContent = e.message;
+          box.classList.remove('hidden');
+          toast('Issue failed.', 'bad');
+        }
+      });
     };
 
     /* ===== Badge helper ===== */
     function badge(status){
       const s = (status||'').toLowerCase();
-      const cls = {issued:'issued',downloaded:'downloaded',decrypted:'decrypted',submitted:'submitted',tampered:'tampered'}[s] || 'issued';
-      return `<span class="badge ${cls}">${status}</span>`;
+      const cls = {issued:'issued',downloaded:'downloaded',decrypted:'decrypted',submitted:'submitted',tampered:'tampered',accepted:'ok',duplicate:'downloaded'}[s] || 'issued';
+      return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
     }
 
     /* ===== Issuances ===== */
+    const issuedBody = document.querySelector('#issuedTable tbody');
+
     async function loadIssued(){
-      const rows = await api('/prof/issuances');
-      const tb = document.querySelector('#issuedTable tbody');
-      tb.innerHTML = '';
-      if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="6" class="table-empty">No issuances yet.</td></tr>`;
-      } else {
-        rows.forEach(r=>{
+      tableSkeleton(issuedBody, 6);
+      document.getElementById('csvIssuances').href = makeUrl('/prof/issuances/csv') + tokenParam();
+
+      try {
+        const rows = await api('/prof/issuances');
+        tableReady(issuedBody);
+
+        if (!rows.length) {
+          tableState(issuedBody, 6, {
+            title: 'Nothing issued yet',
+            hint: 'Pick an assignment and some students above. Each issuance appears here with its delivery status.'
+          });
+          return;
+        }
+
+        issuedBody.innerHTML = rows.map((r) => {
           const sub = r.submission || {};
-          tb.innerHTML += `
+          return `
             <tr>
               <td>${escapeHtml(r.issuance_id)}</td>
               <td>#${escapeHtml(r.assignment_id)} — ${escapeHtml(r.assignment_title)}</td>
@@ -415,81 +610,114 @@
               <td>${badge(r.status)}</td>
               <td>${sub.status ? badge(sub.status) : '—'}${sub.submitted_at ? `<span class="secondary-text">${escapeHtml(prettyTime(sub.submitted_at))}</span>` : ''}</td>
             </tr>`;
+        }).join('');
+      } catch (e) {
+        tableState(issuedBody, 6, {
+          title: "Couldn't load issuances",
+          hint: escapeHtml(e.message),
+          kind: 'bad'
         });
       }
-      const token = localStorage.getItem('token')||'';
-      document.getElementById('csvIssuances').href = makeUrl('/prof/issuances/csv') + '?token=' + encodeURIComponent(token);
     }
     document.getElementById('refreshIssued').onclick = loadIssued;
-    loadIssued();
 
     /* ===== Submissions ===== */
+    const subsBody = document.querySelector('#subsTable tbody');
+
     async function loadSubs(){
-      const rows = await api('/prof/submissions');
-      const tb = document.querySelector('#subsTable tbody');
-      tb.innerHTML = '';
-      if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="6" class="table-empty">No submissions yet.</td></tr>`;
-      } else {
-        rows.forEach(r=>{
-          tb.innerHTML += `
-            <tr>
-              <td>${escapeHtml(r.issuance_id || '—')}</td>
-              <td>#${escapeHtml(r.assignment_id || '—')} — ${escapeHtml(r.assignment_title || '—')}</td>
-              <td>${escapeHtml(r.student.name)}<span class="secondary-text">${escapeHtml(r.student.email)}</span></td>
-              <td>${escapeHtml(prettyTime(r.submitted_at))}</td>
-              <td>${badge(r.status)}</td>
-              <td>${escapeHtml(r.file || '—')}</td>
-            </tr>`;
+      tableSkeleton(subsBody, 6);
+      document.getElementById('csvSubs').href = makeUrl('/prof/submissions/csv') + tokenParam();
+
+      try {
+        const rows = await api('/prof/submissions');
+        tableReady(subsBody);
+
+        if (!rows.length) {
+          tableState(subsBody, 6, {
+            title: 'No submissions yet',
+            hint: 'Answers land here once students submit. Each one is checked against its signed header and hashed to catch duplicates.'
+          });
+          return;
+        }
+
+        subsBody.innerHTML = rows.map((r) => `
+          <tr>
+            <td>${escapeHtml(r.issuance_id || '—')}</td>
+            <td>#${escapeHtml(r.assignment_id || '—')} — ${escapeHtml(r.assignment_title || '—')}</td>
+            <td>${escapeHtml(r.student.name)}<span class="secondary-text">${escapeHtml(r.student.email)}</span></td>
+            <td>${escapeHtml(prettyTime(r.submitted_at))}</td>
+            <td>${badge(r.status)}</td>
+            <td class="mono">${escapeHtml(r.file || '—')}</td>
+          </tr>`).join('');
+      } catch (e) {
+        tableState(subsBody, 6, {
+          title: "Couldn't load submissions",
+          hint: escapeHtml(e.message),
+          kind: 'bad'
         });
       }
-      const token = localStorage.getItem('token')||'';
-      document.getElementById('csvSubs').href = makeUrl('/prof/submissions/csv') + '?token=' + encodeURIComponent(token);
     }
     document.getElementById('refreshSubs').onclick = loadSubs;
+
+    /* ===== Boot ===== */
+    loadAssignments();
+    loadStudents();
+    loadIssued();
     loadSubs();
 
     /* ===== Reset ===== */
-    document.getElementById('resetBtn').onclick = async () => {
+    document.getElementById('resetBtn').onclick = async (ev) => {
       const scope = document.getElementById('resetScope').value;
-      const confirmTxt = document.getElementById('resetConfirm').value.trim();
+      const field = document.getElementById('resetConfirm');
       const box = document.getElementById('resetStatus');
-      if (confirmTxt !== 'RESET') { alert('Please type RESET to confirm.'); return; }
 
-      const resetBtn = document.getElementById('resetBtn');
-      resetBtn.disabled = true;
-      box.className = 'submit-status';
-      box.textContent = 'Resetting system…';
-      box.classList.remove('hidden');
-
-      try {
-        const token = localStorage.getItem('token') || '';
-        const res = await fetch(makeUrl('/admin/reset') + '?token=' + encodeURIComponent(token), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirm: 'RESET', scope })
-        });
-        if (res.ok) { box.classList.add('submit-ok'); box.textContent = 'System reset completed.'; }
-        else         { box.classList.add('submit-bad'); box.textContent = 'System reset failed.'; }
-      } catch (e) {
-        box.classList.add('submit-bad');
-        box.textContent = 'Reset error: ' + (e?.message || 'Unknown error');
-      } finally {
-        resetBtn.disabled = false;
+      if (field.value.trim() !== 'RESET') {
+        field.setAttribute('aria-invalid', 'true');
+        field.focus();
+        toast('Type RESET to confirm.', 'bad');
+        return;
       }
+      field.removeAttribute('aria-invalid');
+
+      await withBusy(ev.currentTarget, 'Resetting', async () => {
+        box.className = 'submit-status';
+        box.textContent = 'Resetting system…';
+        box.classList.remove('hidden');
+
+        try {
+          const res = await fetch(makeUrl('/admin/reset') + tokenParam(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirm: 'RESET', scope })
+          });
+
+          if (res.ok) {
+            box.classList.add('submit-ok');
+            box.textContent = 'System reset completed.';
+            field.value = '';
+            setAssignment(null);
+            SEL.students.clear();
+            loadAssignments();
+            renderStudents();
+            loadIssued();
+            loadSubs();
+          } else {
+            box.classList.add('submit-bad');
+            box.textContent = await readError(res);
+          }
+        } catch (e) {
+          box.classList.add('submit-bad');
+          box.textContent = 'Reset error: ' + (e?.message || 'Unknown error');
+        }
+      });
     };
 
     /* ===== Crypto Lab toggle ===== */
-    window.addEventListener('DOMContentLoaded', () => {
-      const btn = document.getElementById('openCryptoLab');
+    document.getElementById('openCryptoLab').addEventListener('click', (ev) => {
       const lab = document.getElementById('cryptoLab');
-      if (btn && lab) {
-        btn.addEventListener('click', () => {
-          lab.classList.toggle('hidden');
-          btn.textContent = lab.classList.contains('hidden') ? 'Open crypto lab' : 'Close crypto lab';
-          if (!lab.classList.contains('hidden')) lab.scrollIntoView({ behavior:'smooth', block:'start' });
-        });
-      }
+      const hidden = lab.classList.toggle('hidden');
+      ev.currentTarget.textContent = hidden ? 'Open crypto lab' : 'Close crypto lab';
+      if (!hidden) lab.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     /* ===== Crypto Lab logic ===== */
@@ -504,42 +732,48 @@
     const bytesToB64 = u8 => { let s=""; u8.forEach(b=>s+=String.fromCharCode(b)); return btoa(s); };
     const tamperB64  = b64 => { const a=b64ToBytes(b64); if(a.length) a[0]^=1; return bytesToB64(a); };
 
-    $('lab_btnSign')?.addEventListener('click', async ()=>{
-      const fd = new FormData(); fd.append('header_json', $('lab_hdr').value);
-      const r = await fetch('/api/demo/sign-header', { method:'POST', headers: authHeaders(), body:fd });
-      const j = await r.json();
-      setText('lab_aad', j.canonicalAAD); setText('lab_sig', j.signatureHex);
-      $('lab_verified').textContent = j.verified ? 'true' : 'false';
-      $('lab_verified').className = j.verified ? 'badge ok' : 'badge bad';
-      setText('lab_signMsg', 'Header signed using RSA-PSS (SHA-256).');
+    $('lab_btnSign')?.addEventListener('click', async (ev)=>{
+      await withBusy(ev.currentTarget, 'Signing', async () => {
+        const fd = new FormData(); fd.append('header_json', $('lab_hdr').value);
+        const r = await fetch('/api/demo/sign-header', { method:'POST', headers: authHeaders(), body:fd });
+        if (!r.ok) { setText('lab_signMsg', await readError(r)); return; }
+        const j = await r.json();
+        setText('lab_aad', j.canonicalAAD); setText('lab_sig', j.signatureHex);
+        $('lab_verified').textContent = j.verified ? 'true' : 'false';
+        $('lab_verified').className = j.verified ? 'badge ok' : 'badge bad';
+        setText('lab_signMsg', 'Header signed using RSA-PSS (SHA-256).');
+      });
     });
 
-    $('lab_btnVerify')?.addEventListener('click', async ()=>{
+    $('lab_btnVerify')?.addEventListener('click', async (ev)=>{
       const sigHex = $('lab_sig').textContent.trim();
       if (!sigHex || sigHex.startsWith('(will appear here)')) {
         $('lab_signMsg').textContent = 'Sign the header first.';
         $('lab_verified').textContent = 'false'; $('lab_verified').className = 'badge bad'; return;
       }
-      const fd = new FormData(); fd.append('header_json', $('lab_hdr').value); fd.append('signatureHex', sigHex);
-      try {
-        const r = await fetch('/api/demo/verify-header', { method:'POST', headers: authHeaders(), body:fd });
-        const j = await r.json();
-        $('lab_aad').textContent = j.canonicalAAD || '(no AAD)';
-        $('lab_verified').textContent = j.verified ? 'true' : 'false';
-        $('lab_verified').className = j.verified ? 'badge ok' : 'badge bad';
-        $('lab_signMsg').textContent = 'Verification complete.';
-      } catch { $('lab_signMsg').textContent = 'Verification failed.'; $('lab_verified').textContent = 'false'; $('lab_verified').className = 'badge bad'; }
+      await withBusy(ev.currentTarget, 'Verifying', async () => {
+        const fd = new FormData(); fd.append('header_json', $('lab_hdr').value); fd.append('signatureHex', sigHex);
+        try {
+          const r = await fetch('/api/demo/verify-header', { method:'POST', headers: authHeaders(), body:fd });
+          const j = await r.json();
+          $('lab_aad').textContent = j.canonicalAAD || '(no AAD)';
+          $('lab_verified').textContent = j.verified ? 'true' : 'false';
+          $('lab_verified').className = j.verified ? 'badge ok' : 'badge bad';
+          $('lab_signMsg').textContent = 'Verification complete.';
+        } catch { $('lab_signMsg').textContent = 'Verification failed.'; $('lab_verified').textContent = 'false'; $('lab_verified').className = 'badge bad'; }
+      });
     });
 
     let lab_lastZipB64 = null;
 
-    $('lab_btnEncrypt')?.addEventListener('click', async ()=>{
-      const f = $('lab_file').files[0]; if(!f){ alert('Choose a file'); return; }
-      $('lab_btnEncrypt').disabled = true;
-      try {
+    $('lab_btnEncrypt')?.addEventListener('click', async (ev)=>{
+      const f = $('lab_file').files[0];
+      if(!f){ toast('Choose a file to encrypt.', 'bad'); return; }
+
+      await withBusy(ev.currentTarget, 'Encrypting', async () => {
         const fd = new FormData(); fd.append('header_json', $('lab_hdr').value); fd.append('file', f);
         const r = await fetch('/api/demo/aes-gcm-encrypt', { method:'POST', headers: authHeaders(), body:fd });
-        if(!r.ok){ alert('Encrypt failed'); return; }
+        if(!r.ok){ toast(await readError(r), 'bad'); return; }
         const j = await r.json();
         $('lab_key').textContent  = clip(j.keyB64);  $('lab_iv').textContent   = clip(j.ivB64);
         $('lab_aad2').textContent = j.aad || '';       $('lab_ct').textContent   = clip(j.ciphertextB64, 512);
@@ -552,11 +786,11 @@
         $('lab_ctIn').value  = j.ciphertextB64; $('lab_tagIn').value = j.tagB64; $('lab_aadIn').value = j.aad;
         LAB.ptB64 = null; revokePreviewUrl();
         $('lab_pt').textContent = ''; $('lab_preview').src = 'about:blank';
-      } finally { $('lab_btnEncrypt').disabled = false; }
+      });
     });
 
     $('lab_btnDownloadZip')?.addEventListener('click', ()=>{
-      if(!lab_lastZipB64){ alert('Encrypt first.'); return; }
+      if(!lab_lastZipB64){ toast('Encrypt a file first.', 'bad'); return; }
       const blob = new Blob([Uint8Array.from(atob(lab_lastZipB64),(c)=>c.charCodeAt(0))], {type:'application/zip'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = 'CryptoLab.zip'; a.click();
@@ -564,26 +798,26 @@
     });
 
     $('lab_btnTamper')?.addEventListener('click', ()=>{
-      if(!$('lab_ctIn').value){ alert('Nothing to tamper.'); return; }
+      if(!$('lab_ctIn').value){ toast('Encrypt a file first — there is nothing to tamper.', 'bad'); return; }
       $('lab_ctIn').value = tamperB64($('lab_ctIn').value);
-      $('lab_decMsg').innerHTML = '<span class="ok">Tampered 1 byte in ciphertext.</span>';
+      $('lab_decMsg').innerHTML = '<span class="ok">Tampered 1 byte in ciphertext. Decryption should now fail.</span>';
     });
 
-    $('lab_btnDecrypt')?.addEventListener('click', async ()=>{
-      const fd = new FormData();
-      fd.append('keyB64', $('lab_keyIn').value.trim()); fd.append('ivB64', $('lab_ivIn').value.trim());
-      fd.append('aad', $('lab_aadIn').value); fd.append('ciphertextB64', $('lab_ctIn').value.trim());
-      fd.append('tagB64', $('lab_tagIn').value.trim());
-      const r = await fetch('/api/demo/aes-gcm-decrypt', { method:'POST', headers: authHeaders(), body:fd });
-      if(!r.ok){
-        let t = 'Decryption failed';
-        try { const j = await r.json(); t = j.detail || t; } catch {}
-        $('lab_decMsg').innerHTML = `<span class="bad">${t}</span>`;
-        LAB.ptB64 = null; revokePreviewUrl(); $('lab_pt').textContent = ''; $('lab_preview').src = 'about:blank'; return;
-      }
-      const j = await r.json(); LAB.ptB64 = j.plaintextB64;
-      $('lab_decMsg').innerHTML = `<span class="ok">Decryption OK.</span> Plaintext: ${j.plaintextSize} bytes.`;
-      $('lab_pt').textContent = `(PDF plaintext in memory — ${j.plaintextSize} bytes)`;
+    $('lab_btnDecrypt')?.addEventListener('click', async (ev)=>{
+      await withBusy(ev.currentTarget, 'Decrypting', async () => {
+        const fd = new FormData();
+        fd.append('keyB64', $('lab_keyIn').value.trim()); fd.append('ivB64', $('lab_ivIn').value.trim());
+        fd.append('aad', $('lab_aadIn').value); fd.append('ciphertextB64', $('lab_ctIn').value.trim());
+        fd.append('tagB64', $('lab_tagIn').value.trim());
+        const r = await fetch('/api/demo/aes-gcm-decrypt', { method:'POST', headers: authHeaders(), body:fd });
+        if(!r.ok){
+          $('lab_decMsg').innerHTML = `<span class="bad">${escapeHtml(await readError(r))}</span>`;
+          LAB.ptB64 = null; revokePreviewUrl(); $('lab_pt').textContent = ''; $('lab_preview').src = 'about:blank'; return;
+        }
+        const j = await r.json(); LAB.ptB64 = j.plaintextB64;
+        $('lab_decMsg').innerHTML = `<span class="ok">Decryption OK.</span> Plaintext: ${escapeHtml(j.plaintextSize)} bytes.`;
+        $('lab_pt').textContent = `(PDF plaintext in memory — ${j.plaintextSize} bytes)`;
+      });
     });
 
     $('lab_btnPreview')?.addEventListener('click', ()=>{
